@@ -11,8 +11,8 @@ plugins {
 
 android {
     namespace "com.motora.app"
-    compileSdk flutter.compileSdkVersion
-    ndkVersion flutter.ndkVersion
+    compileSdk 34
+    ndkVersion "25.1.8937393"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -24,22 +24,24 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.motora.app"       // 앱 고유 ID
-        minSdk 21                             // Android 5.0 (Lollipop) 이상 지원
-        targetSdk flutter.targetSdkVersion
-        versionCode flutter.versionCode
-        versionName flutter.versionName
+        applicationId "com.motora.app"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
     }
 
     buildTypes {
         release {
-            // 서명 없이 빌드 (테스트용)
-            // 실제 배포 시 signingConfig를 추가해야 합니다
             signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
         }
     }
+}
+
+flutter {
+    source '../..'
 }
 
 flutter {
