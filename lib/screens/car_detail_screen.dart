@@ -1,11 +1,12 @@
 // ============================================================
 // lib/screens/car_detail_screen.dart
-// 차량 상세 화면 - 실제 Unsplash 이미지 + 스펙 + 가격
+// 차량 상세 화면 - 라이트 테마
 // ============================================================
 
 import 'package:flutter/material.dart';
 import '../models/car_data.dart';
 import '../services/image_service.dart';
+import '../widgets/brand_logo.dart';
 
 class CarDetailScreen extends StatefulWidget {
   final CarBrand brand;
@@ -20,14 +21,11 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     with SingleTickerProviderStateMixin {
 
   late TabController _tabController;
-
-  // 이미지 목록 상태
   List<String> _exteriorImages = [];
   List<String> _interiorImages = [];
   bool _loadingImages = true;
   int _currentImageIndex = 0;
 
-  // 최대값 상수 (바 차트 정규화)
   static const double maxHp = 1020;
   static const double maxTorque = 130;
   static const double maxSpeed = 400;
@@ -46,7 +44,6 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     super.dispose();
   }
 
-  /// Unsplash에서 외관/내관 이미지 로드
   Future<void> _loadImages() async {
     setState(() => _loadingImages = true);
     try {
@@ -61,7 +58,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
           _loadingImages = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) setState(() => _loadingImages = false);
     }
   }
@@ -71,33 +68,41 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E1A),
+      backgroundColor: const Color(0xFFF4F6FA),
       body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          // ── 이미지 슬라이더 상단 영역 ─────────────────────
+        headerSliverBuilder: (context, _) => [
+          // ── 이미지 슬라이더 앱바 ────────────────────────
           SliverAppBar(
             expandedHeight: 280,
             pinned: true,
-            backgroundColor: const Color(0xFF0C1B2E),
-            leading: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+            elevation: 1,
+            leading: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                margin: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.black45,
-                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white70,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 18),
+                child: const Icon(Icons.arrow_back_ios_rounded,
+                    color: Color(0xFF1A1A2E), size: 18),
               ),
-              onPressed: () => Navigator.pop(context),
             ),
             actions: [
-              IconButton(
-                icon: Container(
+              GestureDetector(
+                onTap: () {},
+                child: Container(
+                  margin: const EdgeInsets.all(8),
                   padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.favorite_border_rounded, color: Colors.white, size: 18),
+                  decoration: BoxDecoration(
+                    color: Colors.white70,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.favorite_border_rounded,
+                      color: Color(0xFF1A1A2E), size: 20),
                 ),
-                onPressed: () {},
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
@@ -105,33 +110,30 @@ class _CarDetailScreenState extends State<CarDetailScreen>
             ),
           ),
 
-          // ── 차량명 + 가격 고정 헤더 ───────────────────────
+          // ── 차량명 헤더 ──────────────────────────────
           SliverToBoxAdapter(child: _buildCarHeader()),
 
-          // ── 탭 바 ─────────────────────────────────────────
+          // ── 탭 바 ────────────────────────────────────
           SliverPersistentHeader(
             pinned: true,
             delegate: _TabBarDelegate(
               TabBar(
                 controller: _tabController,
                 indicatorColor: brandColor,
-                indicatorWeight: 2.5,
-                labelColor: Colors.white,
-                unselectedLabelColor: const Color(0xFF6B7280),
+                indicatorWeight: 3,
+                labelColor: brandColor,
+                unselectedLabelColor: const Color(0xFFBCC3CE),
                 labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                unselectedLabelStyle: const TextStyle(fontSize: 13),
                 tabs: const [Tab(text: "성능 스펙"), Tab(text: "외관/내관"), Tab(text: "가격 비교")],
               ),
-              backgroundColor: const Color(0xFF0A0E1A),
+              backgroundColor: Colors.white,
             ),
           ),
         ],
         body: TabBarView(
           controller: _tabController,
-          children: [
-            _buildSpecTab(),
-            _buildPhotoTab(),
-            _buildPriceTab(),
-          ],
+          children: [_buildSpecTab(), _buildPhotoTab(), _buildPriceTab()],
         ),
       ),
     );
@@ -139,80 +141,79 @@ class _CarDetailScreenState extends State<CarDetailScreen>
 
   // ── 이미지 슬라이더 ───────────────────────────────────────
   Widget _buildImageSlider() {
-    final allImages = [..._exteriorImages, ..._interiorImages];
+    final all = [..._exteriorImages, ..._interiorImages];
 
     if (_loadingImages) {
       return Container(
-        color: const Color(0xFF0C1B2E),
+        color: brandColor.withOpacity(0.05),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          CircularProgressIndicator(color: brandColor, strokeWidth: 2),
-          const SizedBox(height: 12),
-          const Text("이미지 로딩 중...", style: TextStyle(color: Color(0xFF85B7EB), fontSize: 12)),
+          CircularProgressIndicator(color: brandColor, strokeWidth: 2.5),
+          const SizedBox(height: 14),
+          Text("이미지 불러오는 중...",
+            style: TextStyle(color: brandColor, fontSize: 13)),
         ]),
       );
     }
 
-    if (allImages.isEmpty) {
+    if (all.isEmpty) {
       return Container(
-        color: const Color(0xFF0C1B2E),
+        color: brandColor.withOpacity(0.05),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.directions_car_rounded, color: brandColor.withOpacity(0.4), size: 64),
+          Icon(Icons.directions_car_rounded, color: brandColor.withOpacity(0.3), size: 72),
           const SizedBox(height: 12),
-          Text(widget.model.name, style: TextStyle(color: brandColor, fontSize: 16)),
+          Text(widget.model.name,
+            style: TextStyle(color: brandColor, fontSize: 16, fontWeight: FontWeight.bold)),
         ]),
       );
     }
 
     return Stack(children: [
-      // 이미지 페이지뷰
       PageView.builder(
-        itemCount: allImages.length,
+        itemCount: all.length,
         onPageChanged: (i) => setState(() => _currentImageIndex = i),
-        itemBuilder: (context, i) => Image.network(
-          allImages[i], fit: BoxFit.cover,
+        itemBuilder: (_, i) => Image.network(all[i], fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
-            color: const Color(0xFF0C1B2E),
+            color: brandColor.withOpacity(0.05),
             child: Icon(Icons.image_not_supported_rounded,
-              color: brandColor.withOpacity(0.3), size: 48)),
-        ),
+                color: brandColor.withOpacity(0.2), size: 48))),
       ),
 
-      // 그라데이션 오버레이 (하단)
+      // 하단 그라데이션
       Positioned.fill(child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter, end: Alignment.bottomCenter,
-            colors: [Colors.transparent, const Color(0xFF0A0E1A).withOpacity(0.8)],
-            stops: const [0.5, 1.0],
+            colors: [Colors.transparent, Colors.black.withOpacity(0.5)],
+            stops: const [0.55, 1.0],
           ),
         ),
       )),
 
-      // 이미지 인디케이터 + 라벨
-      Positioned(bottom: 12, left: 0, right: 0,
+      // 외관/내관 라벨 + 인디케이터
+      Positioned(bottom: 14, left: 0, right: 0,
         child: Column(children: [
-          // 외관/내관 라벨
-          if (allImages.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                _currentImageIndex < _exteriorImages.length ? "익스테리어" : "인테리어",
-                style: const TextStyle(fontSize: 11, color: Colors.white70),
-              ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: _currentImageIndex < _exteriorImages.length
+                  ? brandColor : Colors.black54,
+              borderRadius: BorderRadius.circular(20),
             ),
+            child: Text(
+              _currentImageIndex < _exteriorImages.length ? "익스테리어" : "인테리어",
+              style: const TextStyle(fontSize: 11, color: Colors.white,
+                  fontWeight: FontWeight.w600),
+            ),
+          ),
           const SizedBox(height: 8),
-          // 닷 인디케이터
           Row(mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(allImages.length, (i) => Container(
+            children: List.generate(all.length, (i) => AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
               margin: const EdgeInsets.symmetric(horizontal: 2),
-              width: _currentImageIndex == i ? 16 : 5,
+              width: _currentImageIndex == i ? 18 : 5,
               height: 5,
               decoration: BoxDecoration(
-                color: _currentImageIndex == i ? brandColor : Colors.white30,
+                color: _currentImageIndex == i ? Colors.white : Colors.white38,
                 borderRadius: BorderRadius.circular(3),
               ),
             )),
@@ -225,24 +226,38 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   // ── 차량명 헤더 ───────────────────────────────────────────
   Widget _buildCarHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      color: const Color(0xFF0A0E1A),
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(widget.brand.name,
-              style: TextStyle(fontSize: 12, color: brandColor, fontWeight: FontWeight.w600)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: brandColor.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(widget.brand.name,
+                style: TextStyle(fontSize: 11, color: brandColor,
+                    fontWeight: FontWeight.w700)),
+            ),
+            const SizedBox(height: 6),
             Text(widget.model.name,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A2E))),
+            const SizedBox(height: 3),
             Text(widget.model.tagline,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF85B7EB))),
+              style: const TextStyle(fontSize: 13, color: Color(0xFF8A94A6))),
           ])),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            const Text("시작가", style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+            const Text("시작가",
+              style: TextStyle(fontSize: 11, color: Color(0xFF8A94A6))),
+            const SizedBox(height: 2),
             Text(widget.model.price,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: brandColor)),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold,
+                  color: brandColor)),
           ]),
         ],
       ),
@@ -259,7 +274,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
         GridView.count(
           shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10,
-          childAspectRatio: 1.8,
+          childAspectRatio: 1.85,
           children: [
             _specCard("최고 출력", "${m.hp}", "hp"),
             _specCard("0→100 km/h", "${m.z100}", "초"),
@@ -267,14 +282,14 @@ class _CarDetailScreenState extends State<CarDetailScreen>
             _specCard("최고 속도", "${m.topSpeed}", "km/h"),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
-        // 성능 바 차트
+        // 바 차트
         _buildBarChart(m),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
-        // 상세 정보
-        _infoCard([
+        // 상세 정보 테이블
+        _infoTable([
           ("연료 타입", m.fuel),
           ("구동 방식", m.drive),
           ("최고 출력", "${m.hp} hp"),
@@ -291,27 +306,19 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // 익스테리어
         _sectionTitle("익스테리어", Icons.directions_car_rounded),
         const SizedBox(height: 10),
-        if (_loadingImages)
-          _loadingGrid()
-        else if (_exteriorImages.isEmpty)
-          _noImageBox("익스테리어 이미지 없음")
-        else
-          _imageGrid(_exteriorImages),
+        _loadingImages ? _loadingGrid() :
+        _exteriorImages.isEmpty ? _emptyBox("이미지 없음") :
+        _imageGrid(_exteriorImages),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 22),
 
-        // 인테리어
         _sectionTitle("인테리어", Icons.airline_seat_recline_normal_rounded),
         const SizedBox(height: 10),
-        if (_loadingImages)
-          _loadingGrid()
-        else if (_interiorImages.isEmpty)
-          _noImageBox("인테리어 이미지 없음")
-        else
-          _imageGrid(_interiorImages),
+        _loadingImages ? _loadingGrid() :
+        _interiorImages.isEmpty ? _emptyBox("이미지 없음") :
+        _imageGrid(_interiorImages),
       ],
     );
   }
@@ -322,45 +329,65 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // 트림별 가격
         _sectionTitle("트림별 가격", Icons.monetization_on_rounded),
         const SizedBox(height: 10),
+
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF111827),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF1E293B), width: 0.5),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE8ECF0)),
+            boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 3))],
           ),
-          child: Column(
-            children: m.trims.asMap().entries.map((e) {
-              final isLast = e.key == m.trims.length - 1;
-              return Column(children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(e.value.name,
-                        style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w500)),
-                    ])),
-                    Text(e.value.price,
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: brandColor)),
-                  ]),
+          child: Column(children: m.trims.asMap().entries.map((e) {
+            final isFirst = e.key == 0;
+            final isLast = e.key == m.trims.length - 1;
+            return Column(children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: isFirst ? brandColor.withOpacity(0.04) : Colors.transparent,
+                  borderRadius: BorderRadius.vertical(
+                    top: isFirst ? const Radius.circular(16) : Radius.zero,
+                    bottom: isLast ? const Radius.circular(16) : Radius.zero,
+                  ),
                 ),
-                if (!isLast) Divider(height: 1, color: Colors.white.withOpacity(0.06), indent: 16, endIndent: 16),
-              ]);
-            }).toList(),
-          ),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Row(children: [
+                    if (isFirst) Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: brandColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text("기본",
+                        style: TextStyle(fontSize: 9, color: Colors.white,
+                            fontWeight: FontWeight.bold)),
+                    ),
+                    Text(e.value.name,
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF1A1A2E),
+                          fontWeight: FontWeight.w500)),
+                  ]),
+                  Text(e.value.price,
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold,
+                        color: brandColor)),
+                ]),
+              ),
+              if (!isLast) const Divider(height: 1, color: Color(0xFFF0F2F5), indent: 18, endIndent: 18),
+            ]);
+          }).toList()),
         ),
-        const SizedBox(height: 20),
 
-        // 딜러 문의 버튼
+        const SizedBox(height: 20),
         ElevatedButton(
           onPressed: () {},
           style: ElevatedButton.styleFrom(
             backgroundColor: brandColor,
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 50),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            elevation: 0,
           ),
           child: const Text("딜러 문의하기", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
         ),
@@ -369,9 +396,9 @@ class _CarDetailScreenState extends State<CarDetailScreen>
           onPressed: () {},
           style: OutlinedButton.styleFrom(
             foregroundColor: brandColor,
-            side: BorderSide(color: brandColor, width: 0.8),
+            side: BorderSide(color: brandColor, width: 1.2),
             minimumSize: const Size(double.infinity, 50),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           child: const Text("시승 예약하기", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
         ),
@@ -384,20 +411,23 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   Widget _specCard(String label, String value, String unit) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF1E293B), width: 0.5),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE8ECF0)),
+        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 6, offset: Offset(0, 2))],
       ),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+          Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF8A94A6))),
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text(value, style: TextStyle(
+              fontSize: 22, fontWeight: FontWeight.bold, color: brandColor)),
             const SizedBox(width: 3),
             Padding(padding: const EdgeInsets.only(bottom: 2),
-              child: Text(unit, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)))),
+              child: Text(unit,
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8A94A6)))),
           ]),
         ],
       ),
@@ -411,28 +441,29 @@ class _CarDetailScreenState extends State<CarDetailScreen>
       ("가속 (역순)", "${m.z100}초", 1.0 - (m.z100 / maxZ)),
       ("최고 속도", "${m.topSpeed} km/h", m.topSpeed / maxSpeed),
     ];
-
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF1E293B), width: 0.5),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8ECF0)),
+        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 3))],
       ),
       padding: const EdgeInsets.all(16),
       child: Column(children: bars.map((b) => Padding(
         padding: const EdgeInsets.only(bottom: 14),
         child: Column(children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(b.$1, style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
-            Text(b.$2, style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+            Text(b.$1, style: const TextStyle(fontSize: 12, color: Color(0xFF5A6478))),
+            Text(b.$2, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                color: brandColor)),
           ]),
           const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: b.$3.clamp(0.0, 1.0),
-              minHeight: 6,
-              backgroundColor: const Color(0xFF1E293B),
+              minHeight: 7,
+              backgroundColor: const Color(0xFFF0F2F5),
               valueColor: AlwaysStoppedAnimation<Color>(brandColor),
             ),
           ),
@@ -441,24 +472,26 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
-  Widget _infoCard(List<(String, String)> items) {
+  Widget _infoTable(List<(String, String)> items) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF1E293B), width: 0.5),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8ECF0)),
+        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 3))],
       ),
       child: Column(children: items.asMap().entries.map((e) {
         final isLast = e.key == items.length - 1;
         return Column(children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text(e.value.$1, style: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF))),
-              Text(e.value.$2, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+              Text(e.value.$1, style: const TextStyle(fontSize: 13, color: Color(0xFF8A94A6))),
+              Text(e.value.$2, style: const TextStyle(fontSize: 13,
+                  fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E))),
             ]),
           ),
-          if (!isLast) Divider(height: 1, color: Colors.white.withOpacity(0.05), indent: 16, endIndent: 16),
+          if (!isLast) const Divider(height: 1, color: Color(0xFFF4F6FA), indent: 18, endIndent: 18),
         ]);
       }).toList()),
     );
@@ -466,9 +499,17 @@ class _CarDetailScreenState extends State<CarDetailScreen>
 
   Widget _sectionTitle(String title, IconData icon) {
     return Row(children: [
-      Icon(icon, color: brandColor, size: 18),
-      const SizedBox(width: 8),
-      Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+      Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: brandColor.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: brandColor, size: 16),
+      ),
+      const SizedBox(width: 10),
+      Text(title, style: const TextStyle(
+        fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A1A2E))),
     ]);
   }
 
@@ -479,13 +520,12 @@ class _CarDetailScreenState extends State<CarDetailScreen>
         crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 1.5),
       itemCount: urls.length,
       itemBuilder: (_, i) => ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Image.network(urls[i], fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
-            color: const Color(0xFF111827),
+            color: brandColor.withOpacity(0.05),
             child: Icon(Icons.image_not_supported_rounded,
-              color: brandColor.withOpacity(0.3), size: 32)),
-        ),
+              color: brandColor.withOpacity(0.2), size: 32))),
       ),
     );
   }
@@ -495,28 +535,27 @@ class _CarDetailScreenState extends State<CarDetailScreen>
       shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 1.5,
       children: List.generate(4, (_) => ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          color: const Color(0xFF111827),
+          color: const Color(0xFFF0F2F5),
           child: Center(child: CircularProgressIndicator(color: brandColor, strokeWidth: 2)),
         ),
       )),
     );
   }
 
-  Widget _noImageBox(String msg) {
-    return Container(
-      height: 120,
-      decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Center(child: Text(msg, style: const TextStyle(color: Color(0xFF4B5563)))),
-    );
-  }
+  Widget _emptyBox(String msg) => Container(
+    height: 100,
+    decoration: BoxDecoration(
+      color: const Color(0xFFF8F9FB),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: const Color(0xFFE8ECF0)),
+    ),
+    child: Center(child: Text(msg,
+      style: const TextStyle(color: Color(0xFFBCC3CE), fontSize: 13))),
+  );
 }
 
-// ── 탭바 고정 헤더 델리게이트 ──────────────────────────────
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;
   final Color backgroundColor;
@@ -524,9 +563,14 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(color: backgroundColor, child: tabBar);
+    return Container(
+      color: backgroundColor,
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFEEF0F4))),
+      ),
+      child: tabBar,
+    );
   }
-
   @override double get minExtent => tabBar.preferredSize.height;
   @override double get maxExtent => tabBar.preferredSize.height;
   @override bool shouldRebuild(_TabBarDelegate old) => false;

@@ -1,11 +1,12 @@
 // ============================================================
 // lib/screens/model_list_screen.dart
-// 브랜드별 모델 목록 화면
+// 브랜드별 모델 목록 - 라이트 테마
 // ============================================================
 
 import 'package:flutter/material.dart';
 import '../models/car_data.dart';
 import '../services/image_service.dart';
+import '../widgets/brand_logo.dart';
 import 'car_detail_screen.dart';
 
 class ModelListScreen extends StatefulWidget {
@@ -17,7 +18,6 @@ class ModelListScreen extends StatefulWidget {
 }
 
 class _ModelListScreenState extends State<ModelListScreen> {
-  // 각 모델의 썸네일 이미지 URL 맵
   final Map<String, String?> _thumbnails = {};
 
   @override
@@ -26,50 +26,86 @@ class _ModelListScreenState extends State<ModelListScreen> {
     _loadThumbnails();
   }
 
-  /// 모든 모델의 썸네일 이미지를 비동기로 로드
   Future<void> _loadThumbnails() async {
     for (final model in widget.brand.models) {
-      final urls = await ImageService.fetchCarImages(model.name + ' exterior', count: 1);
+      final urls = await ImageService.fetchCarImages(
+        '${widget.brand.name} ${model.name}', count: 1);
       if (mounted && urls.isNotEmpty) {
         setState(() => _thumbnails[model.name] = urls.first);
       }
     }
   }
 
+  Color get brandColor => Color(widget.brand.colorValue);
+
   @override
   Widget build(BuildContext context) {
-    final color = Color(widget.brand.colorValue);
-
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E1A),
+      backgroundColor: const Color(0xFFF4F6FA),
       body: CustomScrollView(
         slivers: [
-          // ── 접히는 상단 헤더 ──────────────────────────────
+          // ── 상단 앱바 ──────────────────────────────────────
           SliverAppBar(
-            expandedHeight: 140,
+            expandedHeight: 150,
             pinned: true,
-            backgroundColor: const Color(0xFF0C1B2E),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
-              onPressed: () => Navigator.pop(context),
+            backgroundColor: Colors.white,
+            elevation: 0,
+            shadowColor: const Color(0x1A000000),
+            surfaceTintColor: Colors.white,
+            leading: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF4F6FA),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE8ECF0)),
+                ),
+                child: const Icon(Icons.arrow_back_ios_rounded,
+                    color: Color(0xFF1A1A2E), size: 18),
+              ),
             ),
             flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
               title: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.brand.name,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-                  Text("${widget.brand.models.length}개 모델",
-                    style: TextStyle(fontSize: 11, color: color)),
+                  Row(children: [
+                    Container(width: 3, height: 18,
+                      decoration: BoxDecoration(
+                        color: brandColor,
+                        borderRadius: BorderRadius.circular(2),
+                      )),
+                    const SizedBox(width: 7),
+                    Text(widget.brand.name,
+                      style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A2E),
+                      )),
+                  ]),
+                  const SizedBox(height: 3),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10),
+                    child: Text("${widget.brand.models.length}개 모델",
+                      style: TextStyle(fontSize: 12, color: brandColor,
+                          fontWeight: FontWeight.w600)),
+                  ),
                 ],
               ),
               background: Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    colors: [color.withOpacity(0.3), const Color(0xFF0C1B2E)],
+                  color: Colors.white,
+                  border: Border(
+                    bottom: BorderSide(color: brandColor.withOpacity(0.15), width: 2),
+                  ),
+                ),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 20),
+                    child: Icon(Icons.directions_car_rounded,
+                        color: brandColor.withOpacity(0.08), size: 100),
                   ),
                 ),
               ),
@@ -81,7 +117,8 @@ class _ModelListScreenState extends State<ModelListScreen> {
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
-                (context, i) => _buildModelCard(context, widget.brand.models[i], color),
+                (context, i) => _buildModelCard(
+                    context, widget.brand.models[i], i),
                 childCount: widget.brand.models.length,
               ),
             ),
@@ -91,83 +128,131 @@ class _ModelListScreenState extends State<ModelListScreen> {
     );
   }
 
-  Widget _buildModelCard(BuildContext context, CarModel model, Color color) {
+  Widget _buildModelCard(BuildContext context, CarModel model, int index) {
     final thumbUrl = _thumbnails[model.name];
+    final color = brandColor;
 
     return GestureDetector(
       onTap: () => Navigator.push(context,
-        MaterialPageRoute(builder: (_) => CarDetailScreen(brand: widget.brand, model: model))),
+        MaterialPageRoute(builder: (_) =>
+            CarDetailScreen(brand: widget.brand, model: model))),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF111827),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF1E293B), width: 0.5),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE8ECF0), width: 1),
+          boxShadow: const [
+            BoxShadow(color: Color(0x0C000000), blurRadius: 10, offset: Offset(0, 4)),
+          ],
         ),
         child: Column(children: [
-          // ── 차량 이미지 영역 ────────────────────────────
+          // ── 차량 이미지 ──────────────────────────────────
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: SizedBox(
-              height: 180,
-              width: double.infinity,
-              child: thumbUrl != null
-                ? Image.network(thumbUrl, fit: BoxFit.cover,
-                    loadingBuilder: (_, child, progress) =>
-                      progress == null ? child : _imagePlaceholder(color, model.name),
-                    errorBuilder: (_, __, ___) => _imagePlaceholder(color, model.name))
-                : _imagePlaceholder(color, model.name),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+            child: Stack(children: [
+              SizedBox(
+                height: 190,
+                width: double.infinity,
+                child: thumbUrl != null
+                  ? Image.network(thumbUrl, fit: BoxFit.cover,
+                      loadingBuilder: (_, child, progress) =>
+                        progress == null ? child : _imagePlaceholder(color, model.name),
+                      errorBuilder: (_, __, ___) => _imagePlaceholder(color, model.name))
+                  : _imagePlaceholder(color, model.name),
+              ),
+              // 브랜드 컬러 그라데이션 오버레이 (하단)
+              Positioned.fill(child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.45)],
+                    stops: const [0.5, 1.0],
+                  ),
+                ),
+              )),
+              // 모델명 오버레이
+              Positioned(bottom: 12, left: 14, right: 14,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(model.name,
+                          style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
+                          )),
+                        Text(model.tagline,
+                          style: const TextStyle(fontSize: 11, color: Colors.white70)),
+                      ],
+                    )),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(model.price,
+                        style: const TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        )),
+                    ),
+                  ],
+                ),
+              ),
+            ]),
           ),
 
-          // ── 모델 정보 영역 ──────────────────────────────
+          // ── 스펙 정보 영역 ──────────────────────────────
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(children: [
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                // 모델명 + 태그라인
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(model.name,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                  const SizedBox(height: 3),
-                  Text(model.tagline,
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF85B7EB))),
-                ])),
-                // 가격
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-                  child: Text(model.price,
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+              // 핵심 스펙 4개
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFEEF0F4)),
                 ),
-              ]),
-              const SizedBox(height: 12),
-
-              // ── 핵심 스펙 4개 ──────────────────────────
-              Row(children: [
-                _miniSpec("${model.hp}hp", "출력", color),
-                _miniSpec("${model.z100}초", "0→100", color),
-                _miniSpec("${model.topSpeed}km", "최고속", color),
-                _miniSpec(model.drive, "구동", color),
-              ]),
-              const SizedBox(height: 12),
-
-              // ── 연료 타입 + 상세보기 버튼 ────────────────
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(model.fuel,
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
-                ),
-                Row(children: [
-                  const Text("상세보기", style: TextStyle(fontSize: 12, color: Color(0xFF378ADD))),
-                  const SizedBox(width: 4),
-                  Icon(Icons.arrow_forward_ios_rounded, size: 12, color: color),
+                child: Row(children: [
+                  _specBadge("${model.hp}", "hp", "출력", color),
+                  _divider(),
+                  _specBadge("${model.z100}s", "", "0→100", color),
+                  _divider(),
+                  _specBadge("${model.topSpeed}", "km", "최고속", color),
+                  _divider(),
+                  _specBadge(model.drive, "", "구동", color),
                 ]),
+              ),
+              const SizedBox(height: 10),
+
+              // 연료 + 상세보기 버튼
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Row(children: [
+                  Icon(_fuelIcon(model.fuel), size: 14, color: const Color(0xFF8A94A6)),
+                  const SizedBox(width: 5),
+                  Text(model.fuel,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF8A94A6))),
+                ]),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.09),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(children: [
+                    Text("상세보기",
+                      style: TextStyle(fontSize: 12, color: color,
+                          fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_rounded, size: 13, color: color),
+                  ]),
+                ),
               ]),
             ]),
           ),
@@ -176,25 +261,44 @@ class _ModelListScreenState extends State<ModelListScreen> {
     );
   }
 
-  // 이미지 로딩 전 플레이스홀더
-  Widget _imagePlaceholder(Color color, String name) {
-    return Container(
-      color: const Color(0xFF0C1B2E),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.directions_car_rounded, color: color.withOpacity(0.4), size: 48),
-        const SizedBox(height: 8),
-        Text(name, style: TextStyle(fontSize: 12, color: color.withOpacity(0.6))),
+  // 연료 타입 아이콘
+  IconData _fuelIcon(String fuel) {
+    if (fuel.contains('전기')) return Icons.bolt_rounded;
+    if (fuel.contains('하이브리드')) return Icons.eco_rounded;
+    if (fuel.contains('디젤')) return Icons.local_gas_station_rounded;
+    return Icons.local_gas_station_outlined;
+  }
+
+  Widget _specBadge(String value, String unit, String label, Color color) {
+    return Expanded(
+      child: Column(children: [
+        RichText(text: TextSpan(children: [
+          TextSpan(text: value,
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
+                color: color)),
+          if (unit.isNotEmpty)
+            TextSpan(text: unit,
+              style: const TextStyle(fontSize: 10, color: Color(0xFF8A94A6))),
+        ])),
+        const SizedBox(height: 2),
+        Text(label,
+          style: const TextStyle(fontSize: 10, color: Color(0xFF8A94A6))),
       ]),
     );
   }
 
-  Widget _miniSpec(String value, String label, Color color) {
-    return Expanded(
-      child: Column(children: [
-        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color),
-          overflow: TextOverflow.ellipsis),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+  Widget _divider() => Container(
+    width: 1, height: 30,
+    color: const Color(0xFFE0E4EA),
+  );
+
+  Widget _imagePlaceholder(Color color, String name) {
+    return Container(
+      color: color.withOpacity(0.06),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.directions_car_rounded, color: color.withOpacity(0.3), size: 52),
+        const SizedBox(height: 8),
+        Text(name, style: TextStyle(fontSize: 12, color: color.withOpacity(0.5))),
       ]),
     );
   }
