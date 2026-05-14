@@ -1,5 +1,5 @@
-name: automoah
-description: 오토모아 - 자동차 브랜드/모델 탐색 앱
+name: automoa
+description: AUTOMOA(오토모아) - 자동차 브랜드/모델 탐색 앱
 publish_to: 'none'
 version: 2.0.0+1
 
