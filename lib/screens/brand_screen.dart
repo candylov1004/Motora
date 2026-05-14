@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import '../models/car_data.dart';
+import 'search_screen.dart';
 import '../widgets/brand_logo.dart';
 import 'model_list_screen.dart';
 
@@ -15,14 +16,14 @@ class BrandScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FA),
       body: SafeArea(child: Column(children: [
-        _buildHeader(),
+        _buildHeader(context),
         Expanded(child: _buildBrandGrid(context)),
       ])),
       bottomNavigationBar: _buildNavBar(),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       decoration: const BoxDecoration(
@@ -42,14 +43,18 @@ class BrandScreen extends StatelessWidget {
           Text("${carBrands.length}개 브랜드 · ${carBrands.fold(0, (s, b) => s + b.models.length)}개 모델",
             style: const TextStyle(fontSize: 12, color: Color(0xFF8A94A6))),
         ]),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF4F6FA),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE8ECF0)),
+        GestureDetector(
+          onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const SearchScreen())),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF4F6FA),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE8ECF0)),
+            ),
+            child: const Icon(Icons.search_rounded, color: Color(0xFF5A6478), size: 20),
           ),
-          child: const Icon(Icons.search_rounded, color: Color(0xFF5A6478), size: 20),
         ),
       ]),
     );

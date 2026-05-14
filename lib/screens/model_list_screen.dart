@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import '../models/car_data.dart';
 import '../services/image_service.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/brand_logo.dart';
 import 'car_detail_screen.dart';
 
@@ -157,9 +158,9 @@ class _ModelListScreenState extends State<ModelListScreen> {
                 child: thumbUrl != null
                   ? Image.network(thumbUrl, fit: BoxFit.cover,
                       loadingBuilder: (_, child, progress) =>
-                        progress == null ? child : _imagePlaceholder(color, model.name),
+                        progress == null ? child : ModelCardSkeleton(),
                       errorBuilder: (_, __, ___) => _imagePlaceholder(color, model.name))
-                  : _imagePlaceholder(color, model.name),
+                  : ModelCardSkeleton(),
               ),
               // 브랜드 컬러 그라데이션 오버레이 (하단)
               Positioned.fill(child: DecoratedBox(
