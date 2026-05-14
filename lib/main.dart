@@ -1,4 +1,4 @@
-// lib/main.dart - MOTORA v4 라이트 테마
+// lib/main.dart - 오토모아
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/brand_screen.dart';
@@ -7,17 +7,18 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark, // 라이트 배경이므로 아이콘 다크
+    statusBarIconBrightness: Brightness.dark,
   ));
-  runApp(const MotoraApp());
+  runApp(const AutomoahApp());
 }
 
-class MotoraApp extends StatelessWidget {
-  const MotoraApp({super.key});
+class AutomoahApp extends StatelessWidget {
+  const AutomoahApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MOTORA',
+      title: '오토모아',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.light,
