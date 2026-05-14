@@ -1,30 +1,16 @@
-plugins {
-    id "com.android.application"
-    id "kotlin-android"
-    id "dev.flutter.flutter-gradle-plugin"
-}
-android {
-    namespace "com.automoa.app"
-    compileSdk 34
-    ndkVersion "25.1.8937393"
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-    kotlinOptions { jvmTarget = '1.8' }
-    defaultConfig {
-        applicationId "com.automoa.app"
-        minSdk 21
-        targetSdk 34
-        versionCode 2        // 업데이트마다 +1씩 올려야 함 (1→2→3...)
-        versionName "2.1.0"  // 사용자에게 보이는 버전명
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
-        }
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
     }
 }
-flutter { source '../..' }
+
+rootProject.buildDir = "../build"
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
