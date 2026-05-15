@@ -16,8 +16,8 @@ android {
         applicationId "com.automoa.app"
         minSdk 21
         targetSdk 34
-        versionCode 2        // 업데이트마다 +1씩 올려야 함 (1→2→3...)
-        versionName "2.1.0"  // 사용자에게 보이는 버전명
+        versionCode 3        // 업데이트마다 +1씩 올려야 함 (1→2→3...)
+        versionName "2.2.0"  // 사용자에게 보이는 버전명
     }
     buildTypes {
         release {
