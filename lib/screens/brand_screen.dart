@@ -1,25 +1,55 @@
 // ============================================================
-// lib/screens/brand_screen.dart - 브랜드 로고 + 라이트 테마
-// 네비게이션 바는 main.dart의 HomeScreen에서 관리
+// lib/screens/brand_screen.dart
+// Supabase에서 브랜드 데이터 로드 + 라이트 테마
 // ============================================================
 
 import 'package:flutter/material.dart';
 import '../models/car_data.dart';
-import 'search_screen.dart';
+import '../services/supabase_service.dart';
 import '../widgets/brand_logo.dart';
+import '../widgets/skeleton.dart';
 import 'model_list_screen.dart';
+import 'search_screen.dart';
 
-class BrandScreen extends StatelessWidget {
+class BrandScreen extends StatefulWidget {
   const BrandScreen({super.key});
+
+  @override
+  State<BrandScreen> createState() => _BrandScreenState();
+}
+
+class _BrandScreenState extends State<BrandScreen> {
+  List<CarBrand> _brands = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBrands();
+  }
+
+  Future<void> _loadBrands() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final brands = await SupabaseService.fetchAllBrands();
+      if (mounted) setState(() { _brands = brands; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = '데이터를 불러올 수 없어요'; _loading = false; });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FA),
-      // bottomNavigationBar 제거 - main.dart HomeScreen에서 통합 관리
       body: SafeArea(child: Column(children: [
         _buildHeader(context),
-        Expanded(child: _buildBrandGrid(context)),
+        Expanded(child: _loading
+          ? _buildSkeleton()
+          : _error != null
+            ? _buildError()
+            : _buildBrandGrid(context)),
       ])),
     );
   }
@@ -35,43 +65,86 @@ class BrandScreen extends StatelessWidget {
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Container(width: 4, height: 22,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE24B4A),
-                borderRadius: BorderRadius.circular(2))),
+              decoration: BoxDecoration(color: const Color(0xFFE24B4A),
+                  borderRadius: BorderRadius.circular(2))),
             const SizedBox(width: 8),
-            const Text("AUTOMOA", style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E), letterSpacing: 1)),
+            const Text("AUTOMOA", style: TextStyle(fontSize: 22,
+                fontWeight: FontWeight.bold, color: Color(0xFF1A1A2E), letterSpacing: 1)),
           ]),
           const SizedBox(height: 4),
-          Text("${carBrands.length}개 브랜드 · ${carBrands.fold(0, (s, b) => s + b.models.length)}개 모델",
+          Text(_loading
+            ? "데이터 로딩 중..."
+            : "${_brands.length}개 브랜드 · ${_brands.fold(0, (s, b) => s + b.models.length)}개 모델",
             style: const TextStyle(fontSize: 12, color: Color(0xFF8A94A6))),
         ]),
-        GestureDetector(
-          onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const SearchScreen())),
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF4F6FA),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE8ECF0)),
-            ),
-            child: const Icon(Icons.search_rounded, color: Color(0xFF5A6478), size: 20),
+        Row(children: [
+          // 새로고침 버튼
+          GestureDetector(
+            onTap: () { SupabaseService.clearCache(); _loadBrands(); },
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF4F6FA),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE8ECF0))),
+              child: const Icon(Icons.refresh_rounded, color: Color(0xFF5A6478), size: 20)),
           ),
-        ),
+          // 검색 버튼
+          GestureDetector(
+            onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const SearchScreen())),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF4F6FA),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE8ECF0))),
+              child: const Icon(Icons.search_rounded, color: Color(0xFF5A6478), size: 20)),
+          ),
+        ]),
       ]),
     );
   }
 
-  Widget _buildBrandGrid(BuildContext context) {
-    return GridView.builder(
+  // 로딩 스켈레톤
+  Widget _buildSkeleton() {
+    return GridView.count(
       padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, crossAxisSpacing: 12,
-        mainAxisSpacing: 12, childAspectRatio: 1.45),
-      itemCount: carBrands.length,
-      itemBuilder: (context, i) => _buildBrandCard(context, carBrands[i]),
+      crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12,
+      childAspectRatio: 1.45,
+      children: List.generate(8, (_) => const BrandCardSkeleton()),
+    );
+  }
+
+  // 에러 화면
+  Widget _buildError() {
+    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      const Icon(Icons.wifi_off_rounded, size: 64, color: Color(0xFFBCC3CE)),
+      const SizedBox(height: 16),
+      Text(_error ?? '오류 발생', style: const TextStyle(fontSize: 15, color: Color(0xFF8A94A6))),
+      const SizedBox(height: 20),
+      ElevatedButton.icon(
+        onPressed: _loadBrands,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF378ADD), foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        icon: const Icon(Icons.refresh_rounded, size: 18),
+        label: const Text("다시 시도")),
+    ]));
+  }
+
+  Widget _buildBrandGrid(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: () async { SupabaseService.clearCache(); await _loadBrands(); },
+      child: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2, crossAxisSpacing: 12,
+          mainAxisSpacing: 12, childAspectRatio: 1.45),
+        itemCount: _brands.length,
+        itemBuilder: (context, i) => _buildBrandCard(context, _brands[i]),
+      ),
     );
   }
 
@@ -85,9 +158,8 @@ class BrandScreen extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFFE8ECF0)),
-          boxShadow: const [BoxShadow(
-              color: Color(0x0C000000), blurRadius: 10, offset: Offset(0, 4))],
-        ),
+          boxShadow: const [BoxShadow(color: Color(0x0C000000),
+              blurRadius: 10, offset: Offset(0, 4))]),
         child: Column(children: [
           Container(height: 5, decoration: BoxDecoration(
             color: color,

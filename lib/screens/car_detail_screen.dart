@@ -1,6 +1,8 @@
 // ============================================================
 // lib/screens/car_detail_screen.dart
-// 차량 상세 화면 - 즐겨찾기 + 연도별 라인업 버튼 포함
+// 차량 상세 화면
+// - 메인 이미지: PageController 스와이프 슬라이더
+// - 이미지 탭: FullScreenImageViewer 전체화면 뷰어
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -8,6 +10,7 @@ import '../models/car_data.dart';
 import '../services/image_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/skeleton.dart';
+import '../widgets/image_viewer.dart';
 import 'year_lineup_screen.dart';
 
 class CarDetailScreen extends StatefulWidget {
@@ -23,11 +26,13 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     with SingleTickerProviderStateMixin {
 
   late TabController _tabController;
+  late final PageController _sliderCtrl;
+
   List<String> _exteriorImages = [];
   List<String> _interiorImages = [];
   bool _loadingImages = true;
   int _currentImageIndex = 0;
-  bool _isFavorite = false; // 즐겨찾기 상태
+  bool _isFavorite = false;
 
   static const double maxHp = 1020;
   static const double maxTorque = 130;
@@ -38,6 +43,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _sliderCtrl = PageController();
     _loadImages();
     _checkFavorite();
   }
@@ -45,6 +51,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _sliderCtrl.dispose();
     super.dispose();
   }
 
@@ -53,7 +60,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     try {
       final results = await Future.wait([
         ImageService.fetchCarImages(widget.model.exteriorKeyword, count: 4),
-        ImageService.fetchInteriorImages(widget.model.interiorKeyword, count: 4),
+        ImageService.fetchCarImages(widget.model.interiorKeyword, count: 4),
       ]);
       if (mounted) {
         setState(() {
@@ -67,18 +74,15 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     }
   }
 
-  /// 즐겨찾기 상태 확인
   Future<void> _checkFavorite() async {
     final fav = await StorageService.isFavorite(
         widget.brand.name, widget.model.name);
     if (mounted) setState(() => _isFavorite = fav);
   }
 
-  /// 즐겨찾기 토글
   Future<void> _toggleFavorite() async {
     if (_isFavorite) {
-      await StorageService.removeFavorite(
-          widget.brand.name, widget.model.name);
+      await StorageService.removeFavorite(widget.brand.name, widget.model.name);
       if (mounted) {
         setState(() => _isFavorite = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -86,18 +90,24 @@ class _CarDetailScreenState extends State<CarDetailScreen>
               duration: Duration(seconds: 1)));
       }
     } else {
-      await StorageService.addFavorite(
-          widget.brand.name, widget.model.name);
+      await StorageService.addFavorite(widget.brand.name, widget.model.name);
       if (mounted) {
         setState(() => _isFavorite = true);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("즐겨찾기에 추가했습니다 ♥"),
+          SnackBar(content: const Text("즐겨찾기에 추가했습니다"),
             duration: const Duration(seconds: 1),
-            backgroundColor: brandColor,
-          ));
+            backgroundColor: brandColor));
       }
     }
+  }
+
+  void _openFullScreen(List<String> images, int index) {
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => FullScreenImageViewer(
+        imageUrls: images,
+        initialIndex: index,
+        title: widget.model.name,
+      )));
   }
 
   Color get brandColor => Color(widget.brand.colorValue);
@@ -109,7 +119,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
           SliverAppBar(
-            expandedHeight: 280,
+            expandedHeight: 300,
             pinned: true,
             backgroundColor: Colors.white,
             surfaceTintColor: Colors.white,
@@ -125,7 +135,6 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                     color: Color(0xFF1A1A2E), size: 18)),
             ),
             actions: [
-              // 즐겨찾기 버튼
               GestureDetector(
                 onTap: _toggleFavorite,
                 child: Container(
@@ -140,12 +149,10 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                         ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
                     color: _isFavorite ? brandColor : const Color(0xFF1A1A2E),
-                    size: 20),
-                ),
+                    size: 20)),
               ),
             ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: _buildImageSlider()),
+            flexibleSpace: FlexibleSpaceBar(background: _buildImageSlider()),
           ),
           SliverToBoxAdapter(child: _buildCarHeader()),
           SliverPersistentHeader(
@@ -181,12 +188,12 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
-  // ── 이미지 슬라이더 ───────────────────────────────────────
+  // ── 메인 이미지 슬라이더 ─────────────────────────────────
   Widget _buildImageSlider() {
     final all = [..._exteriorImages, ..._interiorImages];
-    if (_loadingImages) {
-      return const ImageSliderSkeleton(height: 280);
-    }
+
+    if (_loadingImages) return const ImageSliderSkeleton(height: 300);
+
     if (all.isEmpty) {
       return Container(
         color: brandColor.withOpacity(0.05),
@@ -200,26 +207,53 @@ class _CarDetailScreenState extends State<CarDetailScreen>
         ]),
       );
     }
+
     return Stack(children: [
+      // PageView - 좌우 스와이프 슬라이더
       PageView.builder(
+        controller: _sliderCtrl,
+        physics: const BouncingScrollPhysics(),
         itemCount: all.length,
         onPageChanged: (i) => setState(() => _currentImageIndex = i),
-        itemBuilder: (_, i) => Image.network(all[i], fit: BoxFit.cover,
-          loadingBuilder: (_, child, progress) => progress == null
-              ? child
-              : const SkeletonBox(
-                  width: double.infinity, height: double.infinity,
-                  borderRadius: 0),
-        errorBuilder: (_, __, ___) => Container(
-            color: brandColor.withOpacity(0.05),
-            child: Icon(Icons.image_not_supported_rounded,
-                color: brandColor.withOpacity(0.2), size: 48))),
+        itemBuilder: (_, i) => GestureDetector(
+          onTap: () => _openFullScreen(all, i),
+          child: Image.network(all[i], fit: BoxFit.cover,
+            width: double.infinity, height: double.infinity,
+            loadingBuilder: (_, child, progress) => progress == null
+                ? child
+                : const SkeletonBox(width: double.infinity,
+                    height: double.infinity, borderRadius: 0),
+            errorBuilder: (_, __, ___) => Container(
+              color: brandColor.withOpacity(0.05),
+              child: Icon(Icons.image_not_supported_rounded,
+                  color: brandColor.withOpacity(0.2), size: 48))),
+        ),
       ),
-      Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          colors: [Colors.transparent, Colors.black.withOpacity(0.5)],
-          stops: const [0.55, 1.0])))),
+
+      // 그라데이션
+      Positioned.fill(child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter, end: Alignment.bottomCenter,
+            colors: [Colors.transparent, Colors.black.withOpacity(0.55)],
+            stops: const [0.5, 1.0])))),
+
+      // 탭 확대 힌트
+      Positioned(top: 12, right: 12,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.black38, borderRadius: BorderRadius.circular(8)),
+          child: const Row(children: [
+            Icon(Icons.zoom_out_map_rounded, color: Colors.white70, size: 14),
+            SizedBox(width: 4),
+            Text("탭하여 확대",
+                style: TextStyle(color: Colors.white70, fontSize: 11)),
+          ]),
+        ),
+      ),
+
+      // 외관/내관 라벨 + 인디케이터
       Positioned(bottom: 14, left: 0, right: 0,
         child: Column(children: [
           Container(
@@ -229,20 +263,78 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                   ? brandColor : Colors.black54,
               borderRadius: BorderRadius.circular(20)),
             child: Text(
-              _currentImageIndex < _exteriorImages.length ? "익스테리어" : "인테리어",
+              _currentImageIndex < _exteriorImages.length
+                  ? "익스테리어" : "인테리어",
               style: const TextStyle(fontSize: 11, color: Colors.white,
-                  fontWeight: FontWeight.w600))),
+                  fontWeight: FontWeight.w600)),
+          ),
           const SizedBox(height: 8),
           Row(mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(all.length, (i) => AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              width: _currentImageIndex == i ? 18 : 5,
-              height: 5,
-              decoration: BoxDecoration(
-                color: _currentImageIndex == i ? Colors.white : Colors.white38,
-                borderRadius: BorderRadius.circular(3))))),
-        ])),
+            children: List.generate(all.length, (i) =>
+              GestureDetector(
+                onTap: () => _sliderCtrl.animateToPage(i,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: _currentImageIndex == i ? 20 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _currentImageIndex == i
+                        ? Colors.white : Colors.white38,
+                    borderRadius: BorderRadius.circular(3)),
+                ),
+              )),
+          ),
+        ]),
+      ),
+
+      // 좌우 화살표
+      if (all.length > 1) ...[
+        Positioned(left: 8, top: 0, bottom: 0,
+          child: Center(child: GestureDetector(
+            onTap: () {
+              if (_currentImageIndex > 0) {
+                _sliderCtrl.previousPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut);
+              }
+            },
+            child: AnimatedOpacity(
+              opacity: _currentImageIndex > 0 ? 1.0 : 0.2,
+              duration: const Duration(milliseconds: 150),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black38, shape: BoxShape.circle),
+                child: const Icon(Icons.chevron_left_rounded,
+                    color: Colors.white, size: 26)),
+            ),
+          )),
+        ),
+        Positioned(right: 8, top: 0, bottom: 0,
+          child: Center(child: GestureDetector(
+            onTap: () {
+              if (_currentImageIndex < all.length - 1) {
+                _sliderCtrl.nextPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut);
+              }
+            },
+            child: AnimatedOpacity(
+              opacity: _currentImageIndex < all.length - 1 ? 1.0 : 0.2,
+              duration: const Duration(milliseconds: 150),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black38, shape: BoxShape.circle),
+                child: const Icon(Icons.chevron_right_rounded,
+                    color: Colors.white, size: 26)),
+            ),
+          )),
+        ),
+      ],
     ]);
   }
 
@@ -255,7 +347,8 @@ class _CarDetailScreenState extends State<CarDetailScreen>
         Row(crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -280,10 +373,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                     fontWeight: FontWeight.bold, color: brandColor)),
             ]),
           ]),
-
         const SizedBox(height: 12),
-
-        // ── 연도별 라인업 버튼 ─────────────────────────────
         GestureDetector(
           onTap: () => Navigator.push(context, MaterialPageRoute(
             builder: (_) => YearLineupScreen(
@@ -301,8 +391,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                 style: TextStyle(fontSize: 13, color: brandColor,
                     fontWeight: FontWeight.w600)),
               const Spacer(),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  color: brandColor, size: 13),
+              Icon(Icons.arrow_forward_ios_rounded, color: brandColor, size: 13),
             ]),
           ),
         ),
@@ -346,13 +435,13 @@ class _CarDetailScreenState extends State<CarDetailScreen>
       const SizedBox(height: 10),
       _loadingImages ? const ImageGridSkeleton(count: 4) :
       _exteriorImages.isEmpty ? _emptyBox("이미지 없음") :
-      _imageGrid(_exteriorImages),
+      _imageGrid(_exteriorImages, "익스테리어"),
       const SizedBox(height: 22),
       _sectionTitle("인테리어", Icons.airline_seat_recline_normal_rounded),
       const SizedBox(height: 10),
       _loadingImages ? const ImageGridSkeleton(count: 4) :
       _interiorImages.isEmpty ? _emptyBox("이미지 없음") :
-      _imageGrid(_interiorImages),
+      _imageGrid(_interiorImages, "인테리어"),
     ]);
   }
 
@@ -379,24 +468,22 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                   top: isFirst ? const Radius.circular(16) : Radius.zero,
                   bottom: isLast ? const Radius.circular(16) : Radius.zero)),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Row(children: [
-                  if (isFirst) Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: brandColor,
-                        borderRadius: BorderRadius.circular(4)),
-                    child: const Text("기본",
-                      style: TextStyle(fontSize: 9, color: Colors.white,
-                          fontWeight: FontWeight.bold))),
-                  Text(e.value.name,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF1A1A2E),
-                        fontWeight: FontWeight.w500)),
-                ]),
-                Text(e.value.price,
-                  style: TextStyle(fontSize: 15,
+              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(children: [
+                    if (isFirst) Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: brandColor,
+                          borderRadius: BorderRadius.circular(4)),
+                      child: const Text("기본", style: TextStyle(fontSize: 9,
+                          color: Colors.white, fontWeight: FontWeight.bold))),
+                    Text(e.value.name, style: const TextStyle(fontSize: 14,
+                        color: Color(0xFF1A1A2E), fontWeight: FontWeight.w500)),
+                  ]),
+                  Text(e.value.price, style: TextStyle(fontSize: 15,
                       fontWeight: FontWeight.bold, color: brandColor)),
-              ]),
+                ]),
             ),
             if (!isLast) const Divider(height: 1, color: Color(0xFFF0F2F5),
                 indent: 18, endIndent: 18),
@@ -404,31 +491,62 @@ class _CarDetailScreenState extends State<CarDetailScreen>
         }).toList()),
       ),
       const SizedBox(height: 20),
-      ElevatedButton(
-        onPressed: () {},
-        style: ElevatedButton.styleFrom(
-          backgroundColor: brandColor, foregroundColor: Colors.white,
+      ElevatedButton(onPressed: () {},
+        style: ElevatedButton.styleFrom(backgroundColor: brandColor,
+          foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 50),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 0),
         child: const Text("딜러 문의하기",
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-      ),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
       const SizedBox(height: 10),
-      OutlinedButton(
-        onPressed: () {},
-        style: OutlinedButton.styleFrom(
-          foregroundColor: brandColor,
+      OutlinedButton(onPressed: () {},
+        style: OutlinedButton.styleFrom(foregroundColor: brandColor,
           side: BorderSide(color: brandColor, width: 1.2),
           minimumSize: const Size(double.infinity, 50),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
         child: const Text("시승 예약하기",
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-      ),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
     ]);
   }
 
-  // ── 재사용 위젯 ────────────────────────────────────────────
+  // ── 이미지 그리드 (탭 → 전체화면) ────────────────────────
+  Widget _imageGrid(List<String> urls, String label) {
+    return GridView.builder(
+      shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, crossAxisSpacing: 8,
+        mainAxisSpacing: 8, childAspectRatio: 1.5),
+      itemCount: urls.length,
+      itemBuilder: (_, i) => GestureDetector(
+        onTap: () => _openFullScreen(urls, i), // 탭 → 전체화면
+        child: Stack(children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(urls[i], fit: BoxFit.cover,
+              width: double.infinity, height: double.infinity,
+              loadingBuilder: (_, child, progress) => progress == null ? child
+                : const SkeletonBox(width: double.infinity,
+                    height: double.infinity, borderRadius: 12),
+              errorBuilder: (_, __, ___) => Container(
+                decoration: BoxDecoration(color: brandColor.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.image_not_supported_rounded,
+                    color: brandColor.withOpacity(0.2), size: 32))),
+          ),
+          // 확대 힌트
+          Positioned(top: 6, right: 6,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(color: Colors.black38,
+                  borderRadius: BorderRadius.circular(6)),
+              child: const Icon(Icons.zoom_out_map_rounded,
+                  color: Colors.white70, size: 13))),
+        ]),
+      ),
+    );
+  }
+
   Widget _specCard(String label, String value, String unit) => Container(
     decoration: BoxDecoration(color: Colors.white,
       borderRadius: BorderRadius.circular(14),
@@ -437,17 +555,18 @@ class _CarDetailScreenState extends State<CarDetailScreen>
           blurRadius: 6, offset: Offset(0, 2))]),
     padding: const EdgeInsets.all(14),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF8A94A6))),
-      Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        Text(value, style: TextStyle(fontSize: 22,
-            fontWeight: FontWeight.bold, color: brandColor)),
-        const SizedBox(width: 3),
-        Padding(padding: const EdgeInsets.only(bottom: 2),
-          child: Text(unit, style: const TextStyle(fontSize: 11,
-              color: Color(0xFF8A94A6)))),
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF8A94A6))),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text(value, style: TextStyle(fontSize: 22,
+              fontWeight: FontWeight.bold, color: brandColor)),
+          const SizedBox(width: 3),
+          Padding(padding: const EdgeInsets.only(bottom: 2),
+            child: Text(unit, style: const TextStyle(fontSize: 11,
+                color: Color(0xFF8A94A6)))),
+        ]),
       ]),
-    ]),
   );
 
   Widget _buildBarChart(CarModel m) {
@@ -493,12 +612,12 @@ class _CarDetailScreenState extends State<CarDetailScreen>
       final isLast = e.key == items.length - 1;
       return Column(children: [
         Padding(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(e.value.$1,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF8A94A6))),
-            Text(e.value.$2, style: const TextStyle(fontSize: 13,
-                fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E))),
-          ])),
+          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(e.value.$1, style: const TextStyle(fontSize: 13, color: Color(0xFF8A94A6))),
+              Text(e.value.$2, style: const TextStyle(fontSize: 13,
+                  fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E))),
+            ])),
         if (!isLast) const Divider(height: 1, color: Color(0xFFF4F6FA),
             indent: 18, endIndent: 18),
       ]);
@@ -514,31 +633,6 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     Text(title, style: const TextStyle(fontSize: 15,
         fontWeight: FontWeight.bold, color: Color(0xFF1A1A2E))),
   ]);
-
-  Widget _imageGrid(List<String> urls) => GridView.builder(
-    shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, crossAxisSpacing: 8,
-        mainAxisSpacing: 8, childAspectRatio: 1.5),
-    itemCount: urls.length,
-    itemBuilder: (_, i) => ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Image.network(urls[i], fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
-          color: brandColor.withOpacity(0.05),
-          child: Icon(Icons.image_not_supported_rounded,
-              color: brandColor.withOpacity(0.2), size: 32)))),
-  );
-
-  Widget _loadingGrid() => GridView.count(
-    shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-    crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 1.5,
-    children: List.generate(4, (_) => ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Container(color: const Color(0xFFF0F2F5),
-        child: Center(child: CircularProgressIndicator(
-            color: brandColor, strokeWidth: 2))))),
-  );
 
   Widget _emptyBox(String msg) => Container(height: 100,
     decoration: BoxDecoration(color: const Color(0xFFF8F9FB),
@@ -560,6 +654,7 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
           border: Border(bottom: BorderSide(color: Color(0xFFEEF0F4)))),
       child: tabBar);
   }
+
   @override double get minExtent => tabBar.preferredSize.height;
   @override double get maxExtent => tabBar.preferredSize.height;
   @override bool shouldRebuild(_TabBarDelegate old) => false;
